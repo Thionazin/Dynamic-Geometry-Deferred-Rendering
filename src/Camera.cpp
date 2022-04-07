@@ -65,5 +65,5 @@ void Camera::applyViewMatrix(std::shared_ptr<MatrixStack> MV) const
 	MV->translate(translations);
 	MV->rotate(rotations.y, glm::vec3(1.0f, 0.0f, 0.0f));
 	MV->rotate(rotations.x, glm::vec3(0.0f, 1.0f, 0.0f));
-	MV->translate(glm::vec3(-10.0f, 0.0f, -10.0f));
+	MV->translate(glm::vec3(-5.0f, 0.0f, -5.0f));
 }

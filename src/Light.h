@@ -9,4 +9,5 @@ class Light
 		glm::vec3 color;
 		Light() : position(0.0), color(0.0) {};
 		Light(glm::vec3 pos, glm::vec3 col) : position(pos), color(col) {};
+		void setPos(glm::vec3 newPos) { position = newPos; };
 };

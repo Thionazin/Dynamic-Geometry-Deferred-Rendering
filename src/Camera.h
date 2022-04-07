@@ -28,14 +28,7 @@ public:
 	void mouseClicked(float x, float y, bool shift, bool ctrl, bool alt);
 	void mouseMoved(float x, float y);
 	void applyProjectionMatrix(std::shared_ptr<MatrixStack> P) const;
-	void applyOrthoMatrix(std::shared_ptr<MatrixStack> P, float mult) const;
 	void applyViewMatrix(std::shared_ptr<MatrixStack> MV) const;
-	void applyTopViewMatrix(std::shared_ptr<MatrixStack> MV) const;
-	void moveDir(float change);
-	void moveSide(float change);
-	void zoom(float change);
-	float getFovy() { return fovy; };
-	float getAspect() { return aspect; };
 	
 private:
 	float aspect;
@@ -49,9 +42,6 @@ private:
 	float rfactor;
 	float tfactor;
 	float sfactor;
-	glm::vec3 world_pos;
-	double yaw;
-	double pitch;
 };
 
 #endif

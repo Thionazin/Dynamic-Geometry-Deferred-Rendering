@@ -1,7 +1,7 @@
 #version 120
 
-uniform vec3 light_positions[3];
-uniform vec3 light_colors[3];
+uniform vec3 light_positions[10];
+uniform vec3 light_colors[10];
 uniform vec3 ka;
 uniform vec3 kd;
 uniform vec3 ks;
@@ -15,7 +15,7 @@ void main()
 	vec3 n = normalize(normal);
 	vec3 cameraPos = vec3(0.0, 0.0, 0.0);
 	vec3 color = ka;
-	for(int i = 0; i < 3; i++) {
+	for(int i = 0; i < 10; i++) {
 		vec3 l = normalize(light_positions[i]-vert_pos);
 		vec3 h = normalize(normalize(cameraPos-vert_pos)+l);
 		vec3 t_col = light_colors[i] * (kd*max(0, dot(l, n)) + ks*pow(max(0, dot(h, n)), s));

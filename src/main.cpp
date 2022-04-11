@@ -210,26 +210,51 @@ static void init()
 	}
 
 	{
-		light_positions.emplace_back(2.5, 0.2, 2.5);
-		light_colors.emplace_back(0.0, 1.0, 0.0);
+		light_positions.emplace_back(3.5, 0.2, 3.5);
+		light_colors.emplace_back(0.2, 1.0, 0.2);
 	}
 	
 	{
-		light_positions.emplace_back(3.5, 0.2, 3.5);
-		light_colors.emplace_back(0.0, 0.0, 1.0);
+		light_positions.emplace_back(5.5, 0.2, 5.5);
+		light_colors.emplace_back(0.2, 0.2, 1.0);
 	}
 
-	// Add the sun
 	{
-		glm::vec3 rotation(0.0, 0.0, 0.0);
-		glm::vec3 translation(10.0, 10.0, 10.0);
-		glm::vec3 scale(1.0, 1.0, 1.0);
-		glm::vec3 ambient(1.0, 1.0, 0.0);
-		glm::vec3 diffuse(0.0, 0.0, 0.0);
-		glm::vec3 specular(0.0, 0.0, 0.0);
-		double shininess = 1;
-		wobjs.emplace_back(rotation, translation, scale, sphere, ambient, diffuse, specular, shininess);
+		light_positions.emplace_back(7.5, 0.2, 7.5);
+		light_colors.emplace_back(0.8, 0.2, 1.0);
 	}
+
+	{
+		light_positions.emplace_back(2.5, 0.2, 1.5);
+		light_colors.emplace_back(0.8, 0.3, 0.3);
+	}
+
+	{
+		light_positions.emplace_back(8.5, 0.2, 4.5);
+		light_colors.emplace_back(0.5, 0.2, 0.6);
+	}
+
+	{
+		light_positions.emplace_back(3.5, 0.2, 9.5);
+		light_colors.emplace_back(0.5, 0.3, 0.8);
+	}
+
+	{
+		light_positions.emplace_back(6.5, 0.2, 5.5);
+		light_colors.emplace_back(0.1, 0.1, 0.5);
+	}
+
+	{
+		light_positions.emplace_back(3.5, 0.2, 8.5);
+		light_colors.emplace_back(0.9, 0.2, 0.8);
+	}
+	
+	{
+		light_positions.emplace_back(2.5, 0.2, 6.5);
+		light_colors.emplace_back(0.2, 0.8, 0.8);
+	}
+	
+
 	
 
 	// Add the floor
@@ -278,10 +303,10 @@ static void render()
 	camera->applyViewMatrix(MV);
 
 
-	// Handle the sun
-	glm::vec3 camera_lights[3];
+	// Handle the lights
+	glm::vec3 camera_lights[10];
 	glm::mat4 light_matrix = MV->topMatrix();
-	for(int i = 0; i < 3; i++) {
+	for(unsigned int i = 0; i < light_positions.size(); i++) {
 		glm::vec4 l_pos_cord(light_positions[i], 1.0);
 		camera_lights[i] = light_matrix * l_pos_cord;
 	}
@@ -296,8 +321,8 @@ static void render()
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
 		glUniformMatrix4fv(prog->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
 		glUniformMatrix4fv(prog->getUniform("IT"), 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(MV->topMatrix()))));
-		glUniform3fv(prog->getUniform("light_positions"), 3, glm::value_ptr(camera_lights[0]));
-		glUniform3fv(prog->getUniform("light_colors"), 3, glm::value_ptr(light_colors.data()[0]));
+		glUniform3fv(prog->getUniform("light_positions"), 10, glm::value_ptr(camera_lights[0]));
+		glUniform3fv(prog->getUniform("light_colors"), 10, glm::value_ptr(light_colors.data()[0]));
 		glUniform3fv(prog->getUniform("ka"), 1, glm::value_ptr(wobjs[wobjs.size()-1].ambient));
 		glUniform3fv(prog->getUniform("kd"), 1, glm::value_ptr(wobjs[wobjs.size()-1].diffuse));
 		glUniform3fv(prog->getUniform("ks"), 1, glm::value_ptr(wobjs[wobjs.size()-1].specular));
@@ -307,7 +332,7 @@ static void render()
 	MV->popMatrix();
 
 	// Make the lights
-	for(int i = 0; i < 3; i++) {
+	for(unsigned int i = 0; i < light_positions.size(); i++) {
 		MV->pushMatrix();
 			MV->translate(light_positions[i]);
 			MV->scale(0.1, 0.1, 0.1);
@@ -315,8 +340,8 @@ static void render()
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("IT"), 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(MV->topMatrix()))));
-			glUniform3fv(prog->getUniform("light_positions"), 3, glm::value_ptr(camera_lights[0]));
-			glUniform3fv(prog->getUniform("light_colors"), 3, glm::value_ptr(light_colors.data()[0]));
+			glUniform3fv(prog->getUniform("light_positions"), 10, glm::value_ptr(camera_lights[0]));
+			glUniform3fv(prog->getUniform("light_colors"), 10, glm::value_ptr(light_colors.data()[0]));
 			glUniform3fv(prog->getUniform("ka"), 1, glm::value_ptr(light_colors[i]));
 			glm::vec3 zero_vec(0.0);
 			glUniform3fv(prog->getUniform("kd"), 1, glm::value_ptr(zero_vec));
@@ -328,7 +353,7 @@ static void render()
 	}
 	
 	// Apply all transformations
-	for(unsigned int i = 0; i < wobjs.size()-2; i++) {	
+	for(unsigned int i = 0; i < wobjs.size()-1; i++) {	
 		MV->pushMatrix();
 			MV->translate(wobjs[i].translate);
 			MV->translate(0.0, (0.0-wobjs[i].shape->lowest_y)*wobjs[i].scale.y, 0.0);
@@ -344,8 +369,8 @@ static void render()
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
 			glUniformMatrix4fv(prog->getUniform("IT"), 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(MV->topMatrix()))));
-			glUniform3fv(prog->getUniform("light_positions"), 3, glm::value_ptr(camera_lights[0]));
-			glUniform3fv(prog->getUniform("light_colors"), 3, glm::value_ptr(light_colors.data()[0]));
+			glUniform3fv(prog->getUniform("light_positions"), 10, glm::value_ptr(camera_lights[0]));
+			glUniform3fv(prog->getUniform("light_colors"), 10, glm::value_ptr(light_colors.data()[0]));
 			glUniform3fv(prog->getUniform("ka"), 1, glm::value_ptr(wobjs[i].ambient));
 			glUniform3fv(prog->getUniform("kd"), 1, glm::value_ptr(wobjs[i].diffuse));
 			glUniform3fv(prog->getUniform("ks"), 1, glm::value_ptr(wobjs[i].specular));

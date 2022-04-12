@@ -11,9 +11,12 @@ class WorldObject
 		glm::vec3 translate;
 		glm::vec3 scale;
 		std::shared_ptr<Shape> shape;
+		std::shared_ptr<Sphere> c_sphere;
 		glm::vec3 ambient;
 		glm::vec3 diffuse;
 		glm::vec3 specular;
 		double shiny;
-		WorldObject(glm::vec3 rot, glm::vec3 trans, glm::vec3 scal, std::shared_ptr<Shape> sha, glm::vec3 am, glm::vec3 diff, glm::vec3 spec, double s) : rotate(rot), translate(trans), scale(scal), shape(sha), ambient(am), diffuse(diff), specular(spec), shiny(s) {};
+		int shape_type;
+		WorldObject(glm::vec3 rot, glm::vec3 trans, glm::vec3 scal, std::shared_ptr<Shape> sha, glm::vec3 am, glm::vec3 diff, glm::vec3 spec, double s) : rotate(rot), translate(trans), scale(scal), shape(sha), ambient(am), diffuse(diff), specular(spec), shiny(s), shape_type(0) {};
+		WorldObject(glm::vec3 rot, glm::vec3 trans, glm::vec3 scal, std::shared_ptr<Sphere> sha, glm::vec3 am, glm::vec3 diff, glm::vec3 spec, double s) : rotate(rot), translate(trans), scale(scal), c_sphere(sha), ambient(am), diffuse(diff), specular(spec), shiny(s), shape_type(1) {};
 };

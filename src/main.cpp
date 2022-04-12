@@ -25,6 +25,7 @@
 #include "MatrixStack.h"
 #include "Program.h"
 #include "Shape.h"
+#include "Sphere.h"
 #include "Texture.h"
 
 #include "WorldObject.h"
@@ -43,6 +44,7 @@ shared_ptr<Shape> shape;
 shared_ptr<Shape> teapot;
 shared_ptr<Shape> w_floor;
 shared_ptr<Shape> sphere;
+shared_ptr<Sphere> cust_sphere;
 
 vector<glm::vec3> light_positions;
 vector<glm::vec3> light_colors;
@@ -176,8 +178,16 @@ static void init()
 	std::random_device randevice;
 	std::mt19937 gen(randevice());
 	std::uniform_real_distribution<> distr(0.2, 0.6);
+	std::uniform_real_distribution<> distrad(0.5, 1.0);
+
+	cust_sphere = make_shared<Sphere>();
+	cust_sphere->init(distrad(gen));
 	
 	// Add each individual world object
+	//
+	// I probably should have templeted world object, but it's too late for that now
+	//
+	int counter = 0;
 	for(int i = 0; i < 10; i++) {
 		for(int j = 0; j < 10; j++) {
 			glm::vec3 rotation(0.0, 0.0, 0.0);
@@ -188,11 +198,15 @@ static void init()
 			glm::vec3 diffuse(((double) std::rand() / (RAND_MAX)), ((double) std::rand() / (RAND_MAX)), ((double) std::rand() / (RAND_MAX)));
 			glm::vec3 specular(1.0f, 1.0f, 1.0f);
 			double shininess = 10.0;
-			if((i + j) % 2 == 0) {
+			if(counter % 3 == 0) {
 				wobjs.emplace_back(rotation, translation, scale, shape, ambient, diffuse, specular, shininess);
-			} else {
+			} else if(counter % 3 == 1) {
 				wobjs.emplace_back(rotation, translation, scale, teapot, ambient, diffuse, specular, shininess);
+			} else if(counter % 3 == 2) {
+				glm::vec3 def_scale(0.5, 0.5, 0.5);
+				wobjs.emplace_back(rotation, translation, scale*def_scale, cust_sphere, ambient, diffuse, specular, shininess);
 			}
+			counter++;
 		}
 	}
 
@@ -356,13 +370,20 @@ static void render()
 	for(unsigned int i = 0; i < wobjs.size()-1; i++) {	
 		MV->pushMatrix();
 			MV->translate(wobjs[i].translate);
-			MV->translate(0.0, (0.0-wobjs[i].shape->lowest_y)*wobjs[i].scale.y, 0.0);
-			if(wobjs[i].shape == shape) {
-				MV->rotate(t, 0.0, 1.0, 0.0);
-			} else if(wobjs[i].shape == teapot) {
-				glm::mat4 S(1.0f);
-				S[1][2] = 0.5f*cos(t);
-				MV->multMatrix(S);
+			if(wobjs[i].shape_type == 0) {
+				MV->translate(0.0, (0.0-wobjs[i].shape->lowest_y)*wobjs[i].scale.y, 0.0);
+				if(wobjs[i].shape == shape) {
+					MV->rotate(t, 0.0, 1.0, 0.0);
+				} else if(wobjs[i].shape == teapot) {
+					glm::mat4 S(1.0f);
+					S[1][2] = 0.5f*cos(t);
+					MV->multMatrix(S);
+				}
+			} else if(wobjs[i].shape_type == 1) {
+				MV->translate(0.0, (0.0-wobjs[i].c_sphere->lowest_y)*wobjs[i].scale.y, 0.0);
+				MV->translate(0.0, 0.4*(0.5 * sin((2.0*M_PI)/(1.7)*(t+0.9)) + 0.5), 0.0);
+				double scale_val = -0.5*(0.5*cos((4.0*M_PI)/(1.7)*(t+0.9))+0.5)+1.0;
+				MV->scale(scale_val, 1.0, scale_val);
 			}
 			MV->scale(wobjs[i].scale);
 			prog->bind();
@@ -375,7 +396,11 @@ static void render()
 			glUniform3fv(prog->getUniform("kd"), 1, glm::value_ptr(wobjs[i].diffuse));
 			glUniform3fv(prog->getUniform("ks"), 1, glm::value_ptr(wobjs[i].specular));
 			glUniform1f(prog->getUniform("s"), wobjs[i].shiny);
-			wobjs[i].shape->draw(prog);
+			if(wobjs[i].shape_type == 0) {
+				wobjs[i].shape->draw(prog);
+			} else if(wobjs[i].shape_type == 1) {
+				cust_sphere->draw(prog);
+			}
 			prog->unbind();
 		MV->popMatrix();
 	}
@@ -396,7 +421,7 @@ static void render()
 int main(int argc, char **argv)
 {
 	if(argc < 2) {
-		cout << "Usage: A3 RESOURCE_DIR" << endl;
+		cout << "Usage: A5 RESOURCE_DIR" << endl;
 		return 0;
 	}
 	RESOURCE_DIR = argv[1] + string("/");

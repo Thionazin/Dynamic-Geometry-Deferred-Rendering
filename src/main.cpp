@@ -26,6 +26,7 @@
 #include "Program.h"
 #include "Shape.h"
 #include "Sphere.h"
+#include "Revo.h"
 #include "Texture.h"
 
 #include "WorldObject.h"
@@ -39,12 +40,14 @@ bool OFFLINE = false;
 
 shared_ptr<Camera> camera;
 shared_ptr<Program> prog;
+shared_ptr<Program> sp_prog;
 
 shared_ptr<Shape> shape;
 shared_ptr<Shape> teapot;
 shared_ptr<Shape> w_floor;
 shared_ptr<Shape> sphere;
 shared_ptr<Sphere> cust_sphere;
+shared_ptr<Revo> spiral;
 
 vector<glm::vec3> light_positions;
 vector<glm::vec3> light_colors;
@@ -156,6 +159,25 @@ static void init()
 	prog->addUniform("s");
 	prog->setVerbose(false);
 
+	sp_prog = make_shared<Program>();
+	sp_prog->setShaderNames(RESOURCE_DIR + "vert.glsl", RESOURCE_DIR + "bp_frag.glsl");
+	sp_prog->setVerbose(true);
+	sp_prog->init();
+	sp_prog->addAttribute("aPos");
+	sp_prog->addAttribute("aNor");
+	sp_prog->addAttribute("aTex");
+	sp_prog->addUniform("MV");
+	sp_prog->addUniform("P");
+	sp_prog->addUniform("IT");
+	sp_prog->addUniform("time");
+	sp_prog->addUniform("light_positions");
+	sp_prog->addUniform("light_colors");
+	sp_prog->addUniform("ka");
+	sp_prog->addUniform("kd");
+	sp_prog->addUniform("ks");
+	sp_prog->addUniform("s");
+	sp_prog->setVerbose(false);
+
 	camera = make_shared<Camera>();
 	camera->setInitDistance(20.0f); // Camera's initial Z translation
 	
@@ -182,6 +204,9 @@ static void init()
 
 	cust_sphere = make_shared<Sphere>();
 	cust_sphere->init(distrad(gen));
+
+	spiral = make_shared<Revo>();
+	spiral->init();
 	
 	// Add each individual world object
 	//
@@ -198,13 +223,16 @@ static void init()
 			glm::vec3 diffuse(((double) std::rand() / (RAND_MAX)), ((double) std::rand() / (RAND_MAX)), ((double) std::rand() / (RAND_MAX)));
 			glm::vec3 specular(1.0f, 1.0f, 1.0f);
 			double shininess = 10.0;
-			if(counter % 3 == 0) {
+			if(counter % 4 == 0) {
 				wobjs.emplace_back(rotation, translation, scale, shape, ambient, diffuse, specular, shininess);
-			} else if(counter % 3 == 1) {
+			} else if(counter % 4 == 1) {
 				wobjs.emplace_back(rotation, translation, scale, teapot, ambient, diffuse, specular, shininess);
-			} else if(counter % 3 == 2) {
+			} else if(counter % 4 == 2) {
 				glm::vec3 def_scale(0.5, 0.5, 0.5);
 				wobjs.emplace_back(rotation, translation, scale*def_scale, cust_sphere, ambient, diffuse, specular, shininess);
+			} else if(counter % 4 == 3) {
+				glm::vec3 def_scale(0.2, 0.2, 0.2);
+				wobjs.emplace_back(rotation, translation, scale*def_scale, spiral, ambient, diffuse, specular, shininess);
 			}
 			counter++;
 		}
@@ -384,6 +412,8 @@ static void render()
 				MV->translate(0.0, 0.4*(0.5 * sin((2.0*M_PI)/(1.7)*(t+0.9)) + 0.5), 0.0);
 				double scale_val = -0.5*(0.5*cos((4.0*M_PI)/(1.7)*(t+0.9))+0.5)+1.0;
 				MV->scale(scale_val, 1.0, scale_val);
+			} else if(wobjs[i].shape_type == 2) {
+				MV->rotate(0.5 * M_PI, 0.0, 0.0, 1.0);
 			}
 			MV->scale(wobjs[i].scale);
 			prog->bind();
@@ -402,6 +432,21 @@ static void render()
 				cust_sphere->draw(prog);
 			}
 			prog->unbind();
+			if(wobjs[i].shape_type == 2) {
+				sp_prog->bind();
+				glUniformMatrix4fv(sp_prog->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
+				glUniformMatrix4fv(sp_prog->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
+				glUniformMatrix4fv(sp_prog->getUniform("IT"), 1, GL_FALSE, glm::value_ptr(glm::inverse(glm::transpose(MV->topMatrix()))));
+				glUniform1f(sp_prog->getUniform("time"), t);
+				glUniform3fv(sp_prog->getUniform("light_positions"), 10, glm::value_ptr(camera_lights[0]));
+				glUniform3fv(sp_prog->getUniform("light_colors"), 10, glm::value_ptr(light_colors.data()[0]));
+				glUniform3fv(sp_prog->getUniform("ka"), 1, glm::value_ptr(wobjs[i].ambient));
+				glUniform3fv(sp_prog->getUniform("kd"), 1, glm::value_ptr(wobjs[i].diffuse));
+				glUniform3fv(sp_prog->getUniform("ks"), 1, glm::value_ptr(wobjs[i].specular));
+				glUniform1f(sp_prog->getUniform("s"), wobjs[i].shiny);
+				spiral->draw(sp_prog);
+				sp_prog->unbind();
+			}
 		MV->popMatrix();
 	}
 

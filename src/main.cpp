@@ -41,6 +41,7 @@ bool OFFLINE = false;
 shared_ptr<Camera> camera;
 shared_ptr<Program> prog;
 shared_ptr<Program> sp_prog;
+shared_ptr<Program> prog_pass;
 
 shared_ptr<Shape> shape;
 shared_ptr<Shape> teapot;
@@ -53,6 +54,15 @@ vector<glm::vec3> light_positions;
 vector<glm::vec3> light_colors;
 
 vector<WorldObject> wobjs;
+
+int texWidth = 640;
+int texHeight = 480;
+
+GLuint framebufferID;
+GLuint pos_tex;
+GLuint nor_tex;
+GLuint ke_tex;
+GLuint kd_tex;
 
 bool keyToggles[256] = {false}; // only for English keyboards!
 
@@ -105,6 +115,67 @@ static void char_callback(GLFWwindow *window, unsigned int key)
 static void resize_callback(GLFWwindow *window, int width, int height)
 {
 	glViewport(0, 0, width, height);
+	texWidth = width;
+	texHeight = height;
+
+	glGenFramebuffers(1, &framebufferID);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferID);
+
+	// position texture
+	glGenTextures(1, &pos_tex);
+	glBindTexture(GL_TEXTURE_2D, pos_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pos_tex, 0);
+
+	// normal texture
+	glGenTextures(1, &nor_tex);
+	glBindTexture(GL_TEXTURE_2D, nor_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, nor_tex, 0);
+
+	// ke texture
+	glGenTextures(1, &ke_tex);
+	glBindTexture(GL_TEXTURE_2D, ke_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, ke_tex, 0);
+
+	// kd texture
+	glGenTextures(1, &kd_tex);
+	glBindTexture(GL_TEXTURE_2D, kd_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, kd_tex, 0);
+	
+	GLuint depthrenderbuffer;
+	glGenRenderbuffers(1, &depthrenderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, texWidth, texHeight);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+
+	GLenum attachments[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+	glDrawBuffers(4, attachments);
+
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+	    cerr << "Framebuffer is not ok" << endl;
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
 // https://lencerf.github.io/post/2019-09-21-save-the-opengl-rendering-to-image-file/
@@ -136,14 +207,14 @@ static void init()
 	glfwSetTime(0.0);
 	
 	// Set background color.
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	// Enable z-buffer test.
 	glEnable(GL_DEPTH_TEST);
 
 
 	//initialize the shaders
 	prog = make_shared<Program>();
-	prog->setShaderNames(RESOURCE_DIR + "bp_vert.glsl", RESOURCE_DIR + "bp_frag.glsl");
+	prog->setShaderNames(RESOURCE_DIR + "bp_vert.glsl", RESOURCE_DIR + "dr_frag.glsl");
 	prog->setVerbose(true);
 	prog->init();
 	prog->addAttribute("aPos");
@@ -160,7 +231,7 @@ static void init()
 	prog->setVerbose(false);
 
 	sp_prog = make_shared<Program>();
-	sp_prog->setShaderNames(RESOURCE_DIR + "vert.glsl", RESOURCE_DIR + "bp_frag.glsl");
+	sp_prog->setShaderNames(RESOURCE_DIR + "vert.glsl", RESOURCE_DIR + "dr_frag.glsl");
 	sp_prog->setVerbose(true);
 	sp_prog->init();
 	sp_prog->addAttribute("aPos");
@@ -212,6 +283,7 @@ static void init()
 	//
 	// I probably should have templeted world object, but it's too late for that now
 	//
+	// "random" colors aren't true random, I believe it's because it's using the same seed
 	int counter = 0;
 	for(int i = 0; i < 10; i++) {
 		for(int j = 0; j < 10; j++) {
@@ -231,7 +303,7 @@ static void init()
 				glm::vec3 def_scale(0.5, 0.5, 0.5);
 				wobjs.emplace_back(rotation, translation, scale*def_scale, cust_sphere, ambient, diffuse, specular, shininess);
 			} else if(counter % 4 == 3) {
-				glm::vec3 def_scale(0.2, 0.2, 0.2);
+				glm::vec3 def_scale(0.15, 0.15, 0.15);
 				wobjs.emplace_back(rotation, translation, scale*def_scale, spiral, ambient, diffuse, specular, shininess);
 			}
 			counter++;
@@ -247,52 +319,52 @@ static void init()
 	}
 	*/
 	{
-		light_positions.emplace_back(1.5, 0.2, 1.5);
+		light_positions.emplace_back(1.5, 0.3, 1.5);
 		light_colors.emplace_back(1.0, 1.0, 1.0);
 	}
 
 	{
-		light_positions.emplace_back(3.5, 0.2, 3.5);
+		light_positions.emplace_back(3.5, 0.3, 3.5);
 		light_colors.emplace_back(0.2, 1.0, 0.2);
 	}
 	
 	{
-		light_positions.emplace_back(5.5, 0.2, 5.5);
+		light_positions.emplace_back(5.5, 0.3, 5.5);
 		light_colors.emplace_back(0.2, 0.2, 1.0);
 	}
 
 	{
-		light_positions.emplace_back(7.5, 0.2, 7.5);
+		light_positions.emplace_back(7.5, 0.3, 7.5);
 		light_colors.emplace_back(0.8, 0.2, 1.0);
 	}
 
 	{
-		light_positions.emplace_back(2.5, 0.2, 1.5);
+		light_positions.emplace_back(2.5, 0.3, 1.5);
 		light_colors.emplace_back(0.8, 0.3, 0.3);
 	}
 
 	{
-		light_positions.emplace_back(8.5, 0.2, 4.5);
+		light_positions.emplace_back(8.5, 0.3, 4.5);
 		light_colors.emplace_back(0.5, 0.2, 0.6);
 	}
 
 	{
-		light_positions.emplace_back(3.5, 0.2, 9.5);
+		light_positions.emplace_back(3.5, 0.3, 9.5);
 		light_colors.emplace_back(0.5, 0.3, 0.8);
 	}
 
 	{
-		light_positions.emplace_back(6.5, 0.2, 5.5);
+		light_positions.emplace_back(6.5, 0.3, 5.5);
 		light_colors.emplace_back(0.1, 0.1, 0.5);
 	}
 
 	{
-		light_positions.emplace_back(3.5, 0.2, 8.5);
+		light_positions.emplace_back(3.5, 0.3, 8.5);
 		light_colors.emplace_back(0.9, 0.2, 0.8);
 	}
 	
 	{
-		light_positions.emplace_back(2.5, 0.2, 6.5);
+		light_positions.emplace_back(2.5, 0.3, 6.5);
 		light_colors.emplace_back(0.2, 0.8, 0.8);
 	}
 	
@@ -310,6 +382,92 @@ static void init()
 		double shininess = 10;
 		wobjs.emplace_back(rotation, translation, scale, w_floor, ambient, diffuse, specular, shininess);
 	}
+
+	glGenFramebuffers(1, &framebufferID);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferID);
+
+	// position texture
+	glGenTextures(1, &pos_tex);
+	glBindTexture(GL_TEXTURE_2D, pos_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pos_tex, 0);
+
+	// normal texture
+	glGenTextures(1, &nor_tex);
+	glBindTexture(GL_TEXTURE_2D, nor_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, nor_tex, 0);
+
+	// ke texture
+	glGenTextures(1, &ke_tex);
+	glBindTexture(GL_TEXTURE_2D, ke_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, ke_tex, 0);
+
+	// kd texture
+	glGenTextures(1, &kd_tex);
+	glBindTexture(GL_TEXTURE_2D, kd_tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, kd_tex, 0);
+	
+	GLuint depthrenderbuffer;
+	glGenRenderbuffers(1, &depthrenderbuffer);
+	glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, texWidth, texHeight);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+
+	GLenum attachments[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
+	glDrawBuffers(4, attachments);
+
+	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+	    cerr << "Framebuffer is not ok" << endl;
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+	prog_pass = make_shared<Program>();
+	prog_pass->setShaderNames(RESOURCE_DIR + "dr_vert.glsl", RESOURCE_DIR + "bp_frag.glsl");
+	prog_pass->setVerbose(true);
+	prog_pass->init();
+	prog_pass->addAttribute("aPos");
+	prog_pass->addUniform("MV");
+	prog_pass->addUniform("P");
+	prog_pass->addUniform("light_positions");
+	prog_pass->addUniform("light_colors");
+	prog_pass->addUniform("window_size");
+	prog_pass->addUniform("ks");
+	prog_pass->addUniform("s");
+	prog_pass->setVerbose(false);
+	prog_pass->addUniform("pos_tex");
+	prog_pass->addUniform("nor_tex");
+	prog_pass->addUniform("ke_tex");
+	prog_pass->addUniform("kd_tex");
+	prog_pass->bind();
+	glUniform1i(prog_pass->getUniform("pos_tex"), 0);
+	glUniform1i(prog_pass->getUniform("nor_tex"), 1);
+	glUniform1i(prog_pass->getUniform("ke_tex"), 2);
+	glUniform1i(prog_pass->getUniform("kd_tex"), 3);
+	prog_pass->unbind();
+
+
+
 	
 	GLSL::checkError(GET_FILE_LINE);
 }
@@ -317,26 +475,25 @@ static void init()
 // This function is called every frame to draw the scene.
 static void render()
 {
-	// Clear framebuffer.
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	if(keyToggles[(unsigned)'c']) {
-		glEnable(GL_CULL_FACE);
-	} else {
-		glDisable(GL_CULL_FACE);
-	}
 
-	// Get current frame buffer size.
+	double t = glfwGetTime();
+
+	auto P = make_shared<MatrixStack>();
+	auto MV = make_shared<MatrixStack>();
+
 	int width, height;
 	glfwGetFramebufferSize(window, &width, &height);
 	camera->setAspect((float)width/(float)height);
-	
-	double t = glfwGetTime();
 
+
+
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferID);
 	glViewport(0, 0, width, height);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	// Matrix stacks
-	auto P = make_shared<MatrixStack>();
-	auto MV = make_shared<MatrixStack>();
 	
 	// Apply camera transforms
 	P->pushMatrix();
@@ -352,6 +509,7 @@ static void render()
 		glm::vec4 l_pos_cord(light_positions[i], 1.0);
 		camera_lights[i] = light_matrix * l_pos_cord;
 	}
+
 
 	
 	// Make the ground
@@ -452,6 +610,37 @@ static void render()
 
 	MV->popMatrix();
 	P->popMatrix();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glViewport(0, 0, width, height);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	MV->pushMatrix();
+		prog_pass->bind();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, pos_tex);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, nor_tex);
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, ke_tex);
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, kd_tex);
+		glm::vec2 wind_size(texWidth, texHeight);
+		MV->scale(10.0, 10.0, 10.0);
+		glUniformMatrix4fv(prog_pass->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
+		glUniformMatrix4fv(prog_pass->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
+		glUniform3fv(prog_pass->getUniform("light_positions"), 10, glm::value_ptr(camera_lights[0]));
+		glUniform3fv(prog_pass->getUniform("light_colors"), 10, glm::value_ptr(light_colors.data()[0]));
+		glUniform2fv(prog_pass->getUniform("window_size"), 1, glm::value_ptr(wind_size));
+		glUniform3fv(prog_pass->getUniform("ks"), 1, glm::value_ptr(wobjs[0].specular));
+		glUniform1f(prog_pass->getUniform("s"), wobjs[0].shiny);
+		w_floor->draw(prog_pass);
+		glActiveTexture(GL_TEXTURE0);
+		prog_pass->unbind();
+	MV->popMatrix();
+
 
 
 	GLSL::checkError(GET_FILE_LINE);

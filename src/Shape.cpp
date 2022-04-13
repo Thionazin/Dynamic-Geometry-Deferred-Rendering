@@ -130,10 +130,14 @@ void Shape::draw(const shared_ptr<Program> prog) const
 {
 	// Bind position buffer
 	int h_pos = prog->getAttribute("aPos");
+	GLSL::checkError(GET_FILE_LINE);
 	glEnableVertexAttribArray(h_pos);
+	GLSL::checkError(GET_FILE_LINE);
 	glBindBuffer(GL_ARRAY_BUFFER, posBufID);
 	glVertexAttribPointer(h_pos, 3, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	
+	GLSL::checkError(GET_FILE_LINE);
+
 	// Bind normal buffer
 	int h_nor = prog->getAttribute("aNor");
 	if(h_nor != -1 && norBufID != 0) {
@@ -149,6 +153,7 @@ void Shape::draw(const shared_ptr<Program> prog) const
 		glBindBuffer(GL_ARRAY_BUFFER, texBufID);
 		glVertexAttribPointer(h_tex, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
 	}
+	GLSL::checkError(GET_FILE_LINE);
 	
 	// Draw
 	int count = posBuf.size()/3; // number of indices to be rendered

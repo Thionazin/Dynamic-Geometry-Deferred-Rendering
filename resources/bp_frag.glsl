@@ -22,8 +22,6 @@ void main()
 	vec3 kd = texture2D(kd_tex, tex).rgb;
 	vec3 cameraPos = vec3(0.0, 0.0, 0.0);
 	vec3 color = ke;
-	// A hack so I can use my non hard coded values for ks and s. I liked it better with the different values
-	// Would have preferred adding a specular texture
 	if(ke == cameraPos) {
 		for(int i = 0; i < 10; i++) {
 			vec3 l = normalize(light_positions[i]-position);

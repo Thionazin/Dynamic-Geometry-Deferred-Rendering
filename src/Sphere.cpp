@@ -94,14 +94,6 @@ void Sphere::draw(const std::shared_ptr<Program> prog) const {
 
 	GLSL::checkError(GET_FILE_LINE);
 	
-	// Bind texcoords buffer
-	// Textures not needed as of now
-	/*
-	int h_tex = prog->getAttribute("aTex");
-	glEnableVertexAttribArray(h_tex);
-	glBindBuffer(GL_ARRAY_BUFFER, texBufID);
-	glVertexAttribPointer(h_tex, 2, GL_FLOAT, GL_FALSE, 0, (const void *)0);
-	*/
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indBufID);
 
@@ -115,7 +107,6 @@ void Sphere::draw(const std::shared_ptr<Program> prog) const {
 	// Disable and unbind
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	//glDisableVertexAttribArray(h_tex);
 	glDisableVertexAttribArray(h_nor);
 	glDisableVertexAttribArray(h_pos);
 	

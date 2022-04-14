@@ -118,48 +118,24 @@ static void resize_callback(GLFWwindow *window, int width, int height)
 	texWidth = width;
 	texHeight = height;
 
-	glGenFramebuffers(1, &framebufferID);
+	//glGenFramebuffers(1, &framebufferID);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferID);
 
 	// position texture
-	glGenTextures(1, &pos_tex);
 	glBindTexture(GL_TEXTURE_2D, pos_tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pos_tex, 0);
 
 	// normal texture
-	glGenTextures(1, &nor_tex);
 	glBindTexture(GL_TEXTURE_2D, nor_tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, nor_tex, 0);
 
 	// ke texture
-	glGenTextures(1, &ke_tex);
 	glBindTexture(GL_TEXTURE_2D, ke_tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, ke_tex, 0);
 
 	// kd texture
-	glGenTextures(1, &kd_tex);
 	glBindTexture(GL_TEXTURE_2D, kd_tex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, NULL);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, kd_tex, 0);
 	
 	GLuint depthrenderbuffer;
 	glGenRenderbuffers(1, &depthrenderbuffer);
@@ -167,8 +143,6 @@ static void resize_callback(GLFWwindow *window, int width, int height)
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, texWidth, texHeight);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
 
-	GLenum attachments[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3};
-	glDrawBuffers(4, attachments);
 
 	if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 	    cerr << "Framebuffer is not ok" << endl;
@@ -279,10 +253,6 @@ static void init()
 	spiral = make_shared<Revo>();
 	spiral->init();
 	
-	// Add each individual world object
-	//
-	// I probably should have templeted world object, but it's too late for that now
-	//
 	// "random" colors aren't true random, I believe it's because it's using the same seed
 	int counter = 0;
 	for(int i = 0; i < 10; i++) {
@@ -311,13 +281,6 @@ static void init()
 	}
 
 	// Add the lights
-	// Hard code for now
-	/*
-	for(int i = 0; i < 3; i++) {
-		glm::vec3 l_pos(i, 2.0, j);
-		glm::vec3 l_col();
-	}
-	*/
 	{
 		light_positions.emplace_back(1.5, 0.3, 1.5);
 		light_colors.emplace_back(1.0, 1.0, 1.0);
@@ -628,7 +591,7 @@ static void render()
 		glActiveTexture(GL_TEXTURE3);
 		glBindTexture(GL_TEXTURE_2D, kd_tex);
 		glm::vec2 wind_size(texWidth, texHeight);
-		MV->scale(10.0, 10.0, 10.0);
+		MV->scale(2.0, 2.0, 2.0);
 		glUniformMatrix4fv(prog_pass->getUniform("P"), 1, GL_FALSE, glm::value_ptr(P->topMatrix()));
 		glUniformMatrix4fv(prog_pass->getUniform("MV"), 1, GL_FALSE, glm::value_ptr(MV->topMatrix()));
 		glUniform3fv(prog_pass->getUniform("light_positions"), 10, glm::value_ptr(camera_lights[0]));
